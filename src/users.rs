@@ -235,7 +235,8 @@ pub struct UserResponse {
     pub name: String,
     pub nickname: String,
     pub picture: String,
-    pub identities: Vec<Identity>,
+    // Commented out to not get deser error for invalid connection user_id's
+    // pub identities: Vec<Identity>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -244,6 +245,7 @@ pub struct UserResponse {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Identity {
     pub connection: String,
+    // NOTE: can be an integer in the case of github connection
     pub user_id: String,
     pub provider: String,
     #[serde(rename = "isSocial")]
