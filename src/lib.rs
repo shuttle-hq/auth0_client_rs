@@ -58,7 +58,7 @@ pub mod users;
 mod utils;
 
 /// The grant type to use when authenticating.
-#[derive(Debug, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum GrantType {
     ClientCredentials,
@@ -66,6 +66,7 @@ pub enum GrantType {
 }
 
 /// The client used to make requests towards the Auth0 API.
+#[derive(Debug, Clone)]
 pub struct Auth0Client {
     client_id: String,
     client_secret: String,
