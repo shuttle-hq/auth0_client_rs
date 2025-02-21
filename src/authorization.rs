@@ -74,7 +74,7 @@ impl Authenticatable for Auth0Client {
             .replace_all(&format!("{}/oauth/token", self.domain), "$1")
             .to_string();
 
-        log::debug!("Starting authentication at {url}...");
+        tracing::debug!("Starting authentication at {url}...");
 
         let body = {
             let mut body = std::collections::HashMap::new();
@@ -97,7 +97,7 @@ impl Authenticatable for Auth0Client {
             .replace_all(&format!("{}/oauth/token", self.domain), "$1")
             .to_string();
 
-        log::debug!("Starting authentication at {url}...");
+        tracing::debug!("Starting authentication at {url}...");
 
         let body = {
             let mut body = HashMap::new();
@@ -124,13 +124,13 @@ impl Authenticatable for Auth0Client {
             .replace_all(&format!("{}/oauth/token", self.domain), "$1")
             .to_string();
 
-        log::debug!("Starting authentication at {url}...");
+        tracing::debug!("Starting authentication at {url}...");
 
         let response = self.http_client.post(&url).json(&body).send().await?;
         let status = response.status();
         let resp_body = response.text().await?;
 
-        log::debug!("Response from Auth0 ({}): {resp_body}", status.as_u16());
+        tracing::debug!("Response from Auth0 ({}): {resp_body}", status.as_u16());
 
         Ok(serde_json::from_str::<AccessTokenResponse>(&resp_body)?)
     }

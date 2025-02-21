@@ -145,7 +145,7 @@ impl Auth0Client {
             .replace_all(&format!("{}/{path}", self.audience), "$1")
             .to_string();
 
-        log::debug!("Starting {method} request at {url}...");
+        tracing::debug!("Starting {method} request at {url}...");
 
         let mut req = match method {
             Method::GET => self.http_client.get(&url),
@@ -172,8 +172,8 @@ impl Auth0Client {
             match stored_token {
                 Ok((_, jwks)) => self.jwks = Some(jwks),
                 Err(e) => {
-                    log::debug!("Stored access token is invalid: {}", e.to_string());
-                    log::debug!("Trying to get a new one...");
+                    tracing::debug!("Stored access token is invalid: {}", e.to_string());
+                    tracing::debug!("Trying to get a new one...");
 
                     // Token is invalid so we try to get a new one once.
                     access_token = self.authenticate().await?;
@@ -191,7 +191,7 @@ impl Auth0Client {
         let status = response.status();
         let resp_body = response.text().await?;
 
-        log::debug!("Response from Auth0 ({}): {resp_body}", status.as_u16());
+        tracing::debug!("Response from Auth0 ({}): {resp_body}", status.as_u16());
 
         if status.is_success() {
             if status == StatusCode::NO_CONTENT {
