@@ -26,7 +26,7 @@ pub trait Authenticatable {
     /// # Ok(())
     /// # }
     /// ```
-    async fn authenticate(&mut self) -> Auth0Result<String>;
+    async fn authenticate(&self) -> Auth0Result<String>;
 
     /// Authenticates the a user from its password.
     ///
@@ -42,16 +42,13 @@ pub trait Authenticatable {
     /// # Ok(())
     /// # }
     /// ```
-    async fn authenticate_user(&mut self, username: String, password: String) -> Auth0Result<()>;
+    async fn authenticate_user(&self, username: String, password: String) -> Auth0Result<()>;
 
     /// Calls an authentication request with body
     async fn authenticate_with_body(
-        &mut self,
+        &self,
         body: HashMap<&str, String>,
     ) -> Auth0Result<AccessTokenResponse>;
-
-    /// Returns the access token if autenticated or `None` if it is not.
-    fn access_token(&self) -> Option<String>;
 }
 
 /// The token type we use to authenticate.
@@ -69,7 +66,7 @@ pub struct AccessTokenResponse {
 
 #[async_trait]
 impl Authenticatable for Auth0Client {
-    async fn authenticate(&mut self) -> Auth0Result<String> {
+    async fn authenticate(&self) -> Auth0Result<String> {
         let url = URL_REGEX
             .replace_all(&format!("{}/oauth/token", self.domain), "$1")
             .to_string();
@@ -88,11 +85,10 @@ impl Authenticatable for Auth0Client {
 
         let response = self.authenticate_with_body(body).await?;
 
-        self.access_token = Some(response.access_token.clone());
         Ok(response.access_token)
     }
 
-    async fn authenticate_user(&mut self, username: String, password: String) -> Auth0Result<()> {
+    async fn authenticate_user(&self, username: String, password: String) -> Auth0Result<()> {
         let url = URL_REGEX
             .replace_all(&format!("{}/oauth/token", self.domain), "$1")
             .to_string();
@@ -117,7 +113,7 @@ impl Authenticatable for Auth0Client {
     }
 
     async fn authenticate_with_body(
-        &mut self,
+        &self,
         body: HashMap<&str, String>,
     ) -> Auth0Result<AccessTokenResponse> {
         let url = URL_REGEX
@@ -133,10 +129,6 @@ impl Authenticatable for Auth0Client {
         log::debug!("Response from Auth0 ({}): {resp_body}", status.as_u16());
 
         Ok(serde_json::from_str::<AccessTokenResponse>(&resp_body)?)
-    }
-
-    fn access_token(&self) -> Option<String> {
-        self.access_token.clone()
     }
 }
 
@@ -215,61 +207,8 @@ pub async fn valid_jwt(
 #[cfg(test)]
 mod tests {
     use mockito::{mock, Mock};
-    use serde_json::json;
 
     use super::*;
-
-    fn new_client() -> Auth0Client {
-        Auth0Client::new(
-            "client_id",
-            "client_secret",
-            &mockito::server_url(),
-            "https://audience.com",
-        )
-    }
-
-    fn auth_mock() -> Mock {
-        mock("POST", "/oauth/token")
-            .with_status(200)
-            .with_body(
-                json!({ "access_token": "access_token", "token_type": "Bearer" }).to_string(),
-            )
-            .create()
-    }
-
-    mod authenticate {
-        use super::*;
-
-        #[tokio::test]
-        async fn save_the_access_token_to_the_client() {
-            let _m = auth_mock();
-            let mut client = new_client();
-
-            client.authenticate().await.unwrap();
-            assert_eq!(client.access_token, Some("access_token".to_owned()));
-        }
-    }
-
-    mod access_token {
-        use super::*;
-
-        #[test]
-        fn return_none_when_not_authenticated() {
-            let _m = auth_mock();
-            let client = new_client();
-
-            assert_eq!(client.access_token(), None);
-        }
-
-        #[tokio::test]
-        async fn return_access_token_when_authenticated() {
-            let _m = auth_mock();
-            let mut client = new_client();
-
-            client.authenticate().await.unwrap();
-            assert_eq!(client.access_token(), Some("access_token".to_owned()));
-        }
-    }
 
     mod jwt_validation {
         use super::*;

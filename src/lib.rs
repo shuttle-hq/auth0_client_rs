@@ -48,6 +48,8 @@ use reqwest::{Client as ReqwestClient, Method, StatusCode};
 use serde::de::DeserializeOwned;
 use serde::Serialize;
 use std::fmt::Display;
+use std::sync::Arc;
+use tokio::sync::RwLock;
 
 use crate::authorization::{valid_jwt, Authenticatable};
 use crate::utils::URL_REGEX;
@@ -73,7 +75,7 @@ pub struct Auth0Client {
     domain: String,
     audience: String,
     grant_type: GrantType,
-    access_token: Option<String>,
+    access_token: Arc<RwLock<String>>,
     http_client: ReqwestClient,
     jwks: Option<JWKS>,
 }
@@ -87,7 +89,7 @@ impl Auth0Client {
             domain: domain.to_owned(),
             audience: audience.to_owned(),
             grant_type: GrantType::ClientCredentials,
-            access_token: None,
+            access_token: Default::default(),
             http_client: ReqwestClient::new(),
             jwks: None,
         }
@@ -155,10 +157,14 @@ impl Auth0Client {
             _ => return Err(Error::Unimplemented),
         };
 
-        if let Some(mut access_token) = self.access_token.clone() {
+        // lock self.access_token when setting Bearer since it might need to be renewed
+        // (on the first call, and then every 24h)
+        {
+            let mut access_token = self.access_token.write().await;
+
             // Check validity of stored token.
             let stored_token = valid_jwt(
-                &access_token,
+                (*access_token).as_str(),
                 &self.domain,
                 vec![
                     JWTValidation::NotExpired,
@@ -176,7 +182,7 @@ impl Auth0Client {
                     log::debug!("Trying to get a new one...");
 
                     // Token is invalid so we try to get a new one once.
-                    access_token = self.authenticate().await?;
+                    *access_token = self.authenticate().await?;
                 }
             }
 
