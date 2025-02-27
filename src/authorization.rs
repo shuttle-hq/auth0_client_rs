@@ -7,7 +7,7 @@ use std::collections::HashMap;
 
 use crate::error::{Auth0Result, Error};
 use crate::utils::URL_REGEX;
-use crate::Auth0Client;
+use crate::{Auth0Client, GrantType};
 
 /// Trait for authenticating an Auth0 client.
 #[async_trait]
@@ -76,7 +76,7 @@ impl Authenticatable for Auth0Client {
         let body = {
             let mut body = std::collections::HashMap::new();
 
-            body.insert("grant_type", self.grant_type.to_string());
+            body.insert("grant_type", GrantType::ClientCredentials.to_string());
             body.insert("client_id", self.client_id.clone());
             body.insert("client_secret", self.client_secret.clone());
             body.insert("audience", self.audience.clone());
@@ -98,7 +98,7 @@ impl Authenticatable for Auth0Client {
         let body = {
             let mut body = HashMap::new();
 
-            body.insert("grant_type", self.grant_type.to_string());
+            body.insert("grant_type", GrantType::Password.to_string());
             body.insert("client_id", self.client_id.clone());
             body.insert("client_secret", self.client_secret.clone());
             body.insert("audience", self.audience.clone());

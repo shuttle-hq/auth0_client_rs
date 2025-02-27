@@ -6,9 +6,8 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use thiserror::Error as ThisError;
 
-use crate::authorization::Authenticatable;
 use crate::error::{Auth0ApiError, Auth0Result, Error};
-use crate::{Auth0Client, GrantType};
+use crate::Auth0Client;
 
 /// A struct that can interact with the Auth0 users API.
 #[async_trait]
@@ -26,7 +25,7 @@ pub trait OperateUsers {
     /// # Ok(())
     /// # }
     /// ```
-    async fn get_user(&mut self, user_id: &str) -> Auth0Result<UserResponse>;
+    async fn get_user(&self, user_id: &str) -> Auth0Result<UserResponse>;
 
     /// Gets a user through the Auth0 users API.
     ///
@@ -48,7 +47,7 @@ pub trait OperateUsers {
     /// ```
     ///
     async fn get_user_by_email(
-        &mut self,
+        &self,
         email: &str,
         connection: &str,
     ) -> Auth0Result<Vec<UserResponse>>;
@@ -73,7 +72,7 @@ pub trait OperateUsers {
     /// # Ok(())
     /// # }
     /// ```
-    async fn create_user(&mut self, payload: &CreateUserPayload) -> Auth0Result<UserResponse>;
+    async fn create_user(&self, payload: &CreateUserPayload) -> Auth0Result<UserResponse>;
 
     /// Updates a user through the Auth0 users API.
     ///
@@ -96,7 +95,7 @@ pub trait OperateUsers {
     /// # }
     /// ```
     async fn update_user(
-        &mut self,
+        &self,
         user_id: &str,
         payload: &UpdateUserPayload,
     ) -> Auth0Result<UserResponse>;
@@ -117,29 +116,7 @@ pub trait OperateUsers {
     /// # Ok(())
     /// # }
     /// ```
-    async fn delete_user(&mut self, user_id: &str) -> Auth0Result<()>;
-
-    /// Check a user's password through the Auth0 users API.
-    ///
-    /// # Arguments
-    /// * `payload` - A struct containing the necessary information to check the user's passord.
-    ///
-    /// The `connection` field is mandatory, others depends on the connection type.
-    ///
-    /// # Example
-    /// ```
-    /// # async fn check_password(mut client: auth0_client::Auth0Client) -> auth0_client::error::Auth0Result<()> {
-    /// # use crate::auth0_client::users::OperateUsers;
-    /// let mut payload =
-    ///     auth0_client::users::CheckPasswordPayload::new();
-    /// payload.username = "test@example.com".to_owned();
-    /// payload.password = "password123456789!".to_owned();
-    ///
-    /// client.check_password(&payload).await?;
-    /// # Ok(())
-    /// # }
-    /// ```
-    async fn check_password(&mut self, payload: &CheckPasswordPayload) -> Auth0Result<()>;
+    async fn delete_user(&self, user_id: &str) -> Auth0Result<()>;
 }
 
 /// A struct containing the payload for creating a user.
@@ -254,14 +231,14 @@ pub struct Identity {
 
 #[async_trait]
 impl OperateUsers for Auth0Client {
-    async fn get_user(&mut self, user_id: &str) -> Auth0Result<UserResponse> {
+    async fn get_user(&self, user_id: &str) -> Auth0Result<UserResponse> {
         self.request::<_, _, UserError>(Method::GET, &format!("/users/{user_id}"), None::<String>)
             .await?
             .ok_or(Error::InvalidResponseBody)
     }
 
     async fn get_user_by_email(
-        &mut self,
+        &self,
         email: &str,
         _connection: &str,
     ) -> Auth0Result<Vec<UserResponse>> {
@@ -280,14 +257,14 @@ impl OperateUsers for Auth0Client {
         Ok(res)
     }
 
-    async fn create_user(&mut self, payload: &CreateUserPayload) -> Auth0Result<UserResponse> {
+    async fn create_user(&self, payload: &CreateUserPayload) -> Auth0Result<UserResponse> {
         self.request::<_, _, UserError>(Method::POST, "/users", Some(payload))
             .await?
             .ok_or(Error::InvalidResponseBody)
     }
 
     async fn update_user(
-        &mut self,
+        &self,
         user_id: &str,
         payload: &UpdateUserPayload,
     ) -> Auth0Result<UserResponse> {
@@ -296,22 +273,13 @@ impl OperateUsers for Auth0Client {
             .ok_or(Error::InvalidResponseBody)
     }
 
-    async fn delete_user(&mut self, user_id: &str) -> Auth0Result<()> {
+    async fn delete_user(&self, user_id: &str) -> Auth0Result<()> {
         self.request::<_, (), UserError>(
             Method::DELETE,
             &format!("/users/{user_id}"),
             None::<String>,
         )
         .await?;
-        Ok(())
-    }
-
-    async fn check_password(&mut self, payload: &CheckPasswordPayload) -> Auth0Result<()> {
-        self.grant_type(GrantType::Password);
-
-        self.authenticate_user(payload.username.clone(), payload.password.clone())
-            .await?;
-
         Ok(())
     }
 }

@@ -74,10 +74,9 @@ pub struct Auth0Client {
     client_secret: String,
     domain: String,
     audience: String,
-    grant_type: GrantType,
-    access_token: Arc<RwLock<String>>,
+    access_token: Arc<RwLock<Option<String>>>,
     http_client: ReqwestClient,
-    jwks: Option<JWKS>,
+    jwks: Arc<RwLock<Option<JWKS>>>,
 }
 
 impl Auth0Client {
@@ -88,27 +87,10 @@ impl Auth0Client {
             client_secret: client_secret.to_owned(),
             domain: domain.to_owned(),
             audience: audience.to_owned(),
-            grant_type: GrantType::ClientCredentials,
-            access_token: Default::default(),
+            access_token: Arc::new(RwLock::new(None)),
             http_client: ReqwestClient::new(),
-            jwks: None,
+            jwks: Arc::new(RwLock::new(None)),
         }
-    }
-
-    /// Get a reference to the stored JWKS
-    pub fn jwks(&self) -> Option<&JWKS> {
-        self.jwks.as_ref()
-    }
-
-    /// Set the JWKS
-    pub fn set_jwks(&mut self, jwks: JWKS) {
-        self.jwks = Some(jwks);
-    }
-
-    /// Sets the grant type for the client.
-    pub fn grant_type(&mut self, grant_type: GrantType) -> &Auth0Client {
-        self.grant_type = grant_type;
-        self
     }
 
     /// Make a request towards the Auth0 API. It uses the `audience` field as the base URL.
@@ -133,7 +115,7 @@ impl Auth0Client {
     /// # }
     /// ```
     pub async fn request<B, R, E>(
-        &mut self,
+        &self,
         method: Method,
         path: &str,
         body: Option<B>,
@@ -157,36 +139,42 @@ impl Auth0Client {
             _ => return Err(Error::Unimplemented),
         };
 
-        // lock self.access_token when setting Bearer since it might need to be renewed
+        // lock access_token and jwks when setting Bearer since it might need to be renewed
         // (on the first call, and then every 24h)
         {
             let mut access_token = self.access_token.write().await;
+            let mut jwks = self.jwks.write().await;
 
             // Check validity of stored token.
             let stored_token = valid_jwt(
-                (*access_token).as_str(),
+                (*access_token).as_deref().unwrap_or_default(),
                 &self.domain,
                 vec![
                     JWTValidation::NotExpired,
                     JWTValidation::Issuer(self.domain.clone()),
                     JWTValidation::Audience(self.audience.clone()),
                 ],
-                self.jwks.as_ref(),
+                (*jwks).as_ref(),
             )
             .await;
 
             match stored_token {
-                Ok((_, jwks)) => self.jwks = Some(jwks),
+                Ok((_, new_jwks)) => {
+                    *jwks = Some(new_jwks);
+                }
                 Err(e) => {
                     log::debug!("Stored access token is invalid: {}", e.to_string());
                     log::debug!("Trying to get a new one...");
 
                     // Token is invalid so we try to get a new one once.
-                    *access_token = self.authenticate().await?;
+                    *access_token = Some(self.authenticate().await?);
                 }
             }
 
-            req = req.header("Authorization", format!("Bearer {access_token}"));
+            req = req.header(
+                "Authorization",
+                format!("Bearer {}", access_token.as_deref().unwrap_or_default()),
+            );
         }
 
         if let Some(body) = body {
@@ -252,19 +240,6 @@ mod tests {
             assert_eq!(&client.client_secret, "client_secret");
             assert_eq!(&client.domain, "https://domain.com");
             assert_eq!(&client.audience, "https://audience.com");
-            assert_eq!(client.grant_type, GrantType::ClientCredentials);
-        }
-    }
-
-    mod grant_type {
-        use super::*;
-
-        #[test]
-        fn set_the_grant_type() {
-            let mut client = new_client();
-            client.grant_type(GrantType::Password);
-
-            assert_eq!(client.grant_type, GrantType::Password);
         }
     }
 
@@ -287,7 +262,7 @@ mod tests {
 
             #[tokio::test]
             async fn too_many_requests() {
-                let mut client = new_client();
+                let client = new_client();
                 let _mock = mockito::mock("GET", "/test").with_status(429).create();
                 let response = client
                     .request::<(), (), UserError>(Method::GET, "/test", None)
@@ -301,7 +276,7 @@ mod tests {
 
             #[tokio::test]
             async fn unauthorized() {
-                let mut client = new_client();
+                let client = new_client();
                 let _mock = mockito::mock("GET", "/").with_status(401).create();
                 let response = client
                     .request::<(), (), UserError>(Method::GET, "/", None)
