@@ -67,12 +67,6 @@ pub struct AccessTokenResponse {
 #[async_trait]
 impl Authenticatable for Auth0Client {
     async fn authenticate(&self) -> Auth0Result<String> {
-        let url = URL_REGEX
-            .replace_all(&format!("{}/oauth/token", self.domain), "$1")
-            .to_string();
-
-        log::debug!("Starting authentication at {url}...");
-
         let body = {
             let mut body = std::collections::HashMap::new();
 
@@ -89,12 +83,6 @@ impl Authenticatable for Auth0Client {
     }
 
     async fn authenticate_user(&self, username: String, password: String) -> Auth0Result<()> {
-        let url = URL_REGEX
-            .replace_all(&format!("{}/oauth/token", self.domain), "$1")
-            .to_string();
-
-        log::debug!("Starting authentication at {url}...");
-
         let body = {
             let mut body = HashMap::new();
 
