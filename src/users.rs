@@ -46,11 +46,7 @@ pub trait OperateUsers {
     /// # }
     /// ```
     ///
-    async fn get_user_by_email(
-        &self,
-        email: &str,
-        connection: &str,
-    ) -> Auth0Result<Vec<UserResponse>>;
+    async fn get_users_by_email(&self, email: &str) -> Auth0Result<Vec<UserResponse>>;
 
     /// Creates a user through the Auth0 users API.
     ///
@@ -237,11 +233,7 @@ impl OperateUsers for Auth0Client {
             .ok_or(Error::InvalidResponseBody)
     }
 
-    async fn get_user_by_email(
-        &self,
-        email: &str,
-        _connection: &str,
-    ) -> Auth0Result<Vec<UserResponse>> {
+    async fn get_users_by_email(&self, email: &str) -> Auth0Result<Vec<UserResponse>> {
         let res: Vec<UserResponse> = self
             .request::<_, _, UserError>(
                 Method::GET,
