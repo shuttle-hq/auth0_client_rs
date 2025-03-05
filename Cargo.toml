@@ -15,10 +15,8 @@ categories = ["api-bindings", "authentication"]
 alcoholic_jwt = "4091.0.0"
 async-trait = "0.1.61"
 chrono = { version = "0.4.23", features = ["serde"] }
-dotenv = "0.15.0"
 lazy_static = "1.4.0"
 log = "0.4.17"
-pretty_env_logger = "0.4.0"
 regex = "1.7.1"
 reqwest = { version = "0.12", features = ["json"] }
 serde = { version = "1.0.152", features = ["derive"] }
@@ -28,5 +26,7 @@ tokio = "1"
 urlencoding = "2.1.2"
 
 [dev-dependencies]
+dotenvy = "0.15.0"
 mockito = "0.31.1"
-tokio = { version = "1.24.1", features = ["macros"] }
+tokio = { version = "1.24.1", features = ["full"] }
+tracing-subscriber = "0.3"
