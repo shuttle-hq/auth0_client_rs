@@ -200,7 +200,7 @@ pub struct CheckPasswordPayload {
 }
 
 /// A struct containing the response from the Auth0 users API.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct UserResponse {
     pub user_id: String,
     pub email: Option<String>,
