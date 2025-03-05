@@ -4,6 +4,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, Utc};
 use reqwest::Method;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use thiserror::Error as ThisError;
 
 use crate::error::{Auth0ApiError, Auth0Result, Error};
@@ -208,18 +209,17 @@ pub struct UserResponse {
     pub name: String,
     pub nickname: String,
     pub picture: String,
-    // Commented out to not get deser error for invalid connection user_id's
-    // pub identities: Vec<Identity>,
+    pub identities: Vec<Identity>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
 
 /// A struct containing an identity of a user.
-#[derive(Debug, Deserialize, Clone)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct Identity {
     pub connection: String,
-    // NOTE: can be an integer in the case of github connection
-    pub user_id: String,
+    // NOTE: assumed to be a string, but can be an integer in the case of github connection
+    pub user_id: Value,
     pub provider: String,
     #[serde(rename = "isSocial")]
     pub is_social: bool,
