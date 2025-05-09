@@ -126,7 +126,7 @@ impl Auth0Client {
         E: From<Auth0ApiError> + Into<Error>,
     {
         let url = URL_REGEX
-            .replace_all(&format!("{}/{path}", self.audience), "$1")
+            .replace_all(&format!("{}/api/v2/{path}", self.domain), "$1")
             .to_string();
 
         log::debug!("Starting {method} request at {url}...");
