@@ -74,6 +74,8 @@ pub struct Auth0Client {
     client_secret: String,
     domain: String,
     audience: String,
+    // might not be the same as `audience` if a custom domain is used
+    api_endpoint: String,
     access_token: Arc<RwLock<Option<String>>>,
     http_client: ReqwestClient,
     jwks: Arc<RwLock<Option<JWKS>>>,
@@ -87,13 +89,14 @@ impl Auth0Client {
             client_secret: client_secret.to_owned(),
             domain: domain.to_owned(),
             audience: audience.to_owned(),
+            api_endpoint: format!("{domain}/api/v2/"),
             access_token: Arc::new(RwLock::new(None)),
             http_client: ReqwestClient::new(),
             jwks: Arc::new(RwLock::new(None)),
         }
     }
 
-    /// Make a request towards the Auth0 API. It uses the `audience` field as the base URL.
+    /// Make a request towards the Auth0 API.
     ///
     /// If access token is expired, it will first try to get a new one.
     ///
@@ -110,7 +113,7 @@ impl Auth0Client {
     /// # use crate::auth0_client::users::OperateUsers;
     /// # use auth0_client::users::UserError;
     /// # use auth0_client::users::UserResponse;
-    /// client.request::<String, UserResponse, UserError>(reqwest::Method::GET, "/api/v2/users", None).await?;
+    /// client.request::<String, UserResponse, UserError>(reqwest::Method::GET, "/users", None).await?;
     /// # Ok(())
     /// # }
     /// ```
@@ -126,7 +129,7 @@ impl Auth0Client {
         E: From<Auth0ApiError> + Into<Error>,
     {
         let url = URL_REGEX
-            .replace_all(&format!("{}/api/v2/{path}", self.domain), "$1")
+            .replace_all(&format!("{}/{path}", self.api_endpoint), "$1")
             .to_string();
 
         log::debug!("Starting {method} request at {url}...");
